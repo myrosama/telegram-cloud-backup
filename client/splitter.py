@@ -1,5 +1,6 @@
 # splitter.py
 import os
+import argparse
 
 def parse_size(size_str):
     units = {"kb": 1024, "mb": 1024**2, "gb": 1024**3}
@@ -8,12 +9,18 @@ def parse_size(size_str):
         if size_str.endswith(unit):
             num = float(size_str.replace(unit, ""))
             return int(num * units[unit] * 0.95)  # Use 95% of size to stay under Telegram limit
-    raise ValueError("Invalid size format. Use kb, mb, or gb (e.g., 2gb)")
+    # Added 'b' for bytes to allow for small test files
+    if size_str.endswith('b'):
+        return int(size_str[:-1])
+    raise ValueError("Invalid size format. Use b, kb, mb, or gb (e.g., 2gb)")
 
 def split_file(file_path, chunk_size):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File to split not found: {file_path}")
+
     file_size = os.path.getsize(file_path)
     base_name = os.path.basename(file_path)
-    file_dir = os.path.dirname(file_path)
+    file_dir = os.path.dirname(file_path) or '.' # Use current directory if empty
     part_num = 1
     parts = []
 
@@ -34,18 +41,20 @@ def split_file(file_path, chunk_size):
 def join_files(parts_list, output_file):
     with open(output_file, 'wb') as outfile:
         for part in parts_list:
+            if not os.path.exists(part):
+                print(f"Warning: Part file not found, skipping: {part}")
+                continue
             with open(part, 'rb') as pf:
                 outfile.write(pf.read())
     return output_file
 
 if __name__ == '__main__':
-    import argparse
-
     parser = argparse.ArgumentParser(description="Split or join files.")
     parser.add_argument('--split', help="Path to file to split")
-    parser.add_argument('--size', help="Size of each part (e.g., 2gb, 500mb)", default="4.9gb")
-    parser.add_argument('--join', nargs='+', help="Parts to join")
-    parser.add_argument('--output', help="Output filename for joined file")
+    parser.add_argument('--size', help="Size of each part (e.g., 2gb, 500mb)", default="1.9gb")
+    # Changed nargs to '*' to allow for zero or more arguments for --join
+    parser.add_argument('--join', help="Path to the FIRST part to join. The rest are found automatically.")
+    parser.add_argument('--output', help="Output filename for joined file. Optional for joining.")
 
     args = parser.parse_args()
 
@@ -57,26 +66,41 @@ if __name__ == '__main__':
             print("Split into:", result)
         except Exception as e:
             print("Error:", e)
+    
     elif args.join:
-        if not args.output:
-            print("You must provide --output for joining.")
-        else:
-            if len(args.join) == 1 and os.path.isfile(args.join[0]):
-                # Auto-detect all parts
-                first_part = args.join[0]
-                base_path = os.path.dirname(first_part) or '.'
-                base_name = os.path.basename(first_part).rsplit(".part", 1)[0]
+        # --- THIS IS THE NEW LOGIC ---
+        first_part = args.join
+        
+        # 1. Get the base name (e.g., 'myvideo.mp4' from 'myvideo.mp4.part1')
+        try:
+            base_name = os.path.basename(first_part).rsplit('.part', 1)[0]
+        except ValueError:
+            print(f"Error: Invalid part file name '{first_part}'. Expected format 'filename.partX'.")
+            exit()
 
-                all_parts = [f for f in os.listdir(base_path) if f.startswith(base_name + ".part")]
-                all_parts = sorted(all_parts, key=lambda x: int(x.split(".part")[1]))
-                all_parts_full = [os.path.join(base_path, f) for f in all_parts]
-
-                print(f"Auto-joining {len(all_parts_full)} parts...")
-                output = join_files(all_parts_full, args.output)
-                print("Joined into:", output)
-            else:
-                print("Joining manually listed files...")
-                output = join_files(args.join, args.output)
-                print("Joined into:", output)
+        # 2. Automatically determine the output filename if not provided
+        output_filename = args.output if args.output else base_name
+        
+        # 3. Find all parts in the same directory
+        directory = os.path.dirname(first_part) or '.'
+        all_files_in_dir = os.listdir(directory)
+        
+        # Filter for only the parts of our file
+        detected_parts = [f for f in all_files_in_dir if f.startswith(base_name + '.part')]
+        
+        if not detected_parts:
+            print(f"Error: No parts found for '{base_name}' in this directory.")
+            exit()
+            
+        # 4. Sort the parts numerically, not alphabetically (so part10 comes after part9)
+        detected_parts.sort(key=lambda name: int(name.rsplit('.part', 1)[1]))
+        
+        # Create full paths for each part
+        full_part_paths = [os.path.join(directory, p) for p in detected_parts]
+        
+        print(f"Auto-detected {len(full_part_paths)} parts. Joining into '{output_filename}'...")
+        output = join_files(full_part_paths, output_filename)
+        print("Joined successfully into:", output)
+        
     else:
-        print("Use --split <file> --size <e.g. 2gb> or --join <part1 part2 ...> --output <file>")
+        print("No action specified. Use --split <file> or --join <first_part>.")
