@@ -2,13 +2,10 @@
 import os
 
 def parse_size(size_str):
-    units = {"kb": 1024, "mb": 1024**2, "gb": 1024**3}
-    size_str = size_str.lower()
-    for unit in units:
-        if size_str.endswith(unit):
-            num = float(size_str.replace(unit, ""))
-            return int(num * units[unit] * 0.95)  # Use 95% of size to stay under Telegram limit
-    raise ValueError("Invalid size format. Use kb, mb, or gb (e.g., 2gb)")
+    # This function now ignores the input and always returns 95% of 50 MB.
+    # It calculates a fixed value to stay safely under Telegram's limit.
+    fixed_size_in_bytes = int((50 * 1024 * 1024) * 0.95)
+    return fixed_size_in_bytes
 
 def split_file(file_path, chunk_size):
     file_size = os.path.getsize(file_path)
