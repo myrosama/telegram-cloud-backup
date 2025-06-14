@@ -61,8 +61,22 @@ if __name__ == '__main__':
         if not args.output:
             print("You must provide --output for joining.")
         else:
-            print("Joining...")
-            output = join_files(args.join, args.output)
-            print("Joined into:", output)
+            if len(args.join) == 1 and os.path.isfile(args.join[0]):
+                # Auto-detect all parts
+                first_part = args.join[0]
+                base_path = os.path.dirname(first_part) or '.'
+                base_name = os.path.basename(first_part).rsplit(".part", 1)[0]
+
+                all_parts = [f for f in os.listdir(base_path) if f.startswith(base_name + ".part")]
+                all_parts = sorted(all_parts, key=lambda x: int(x.split(".part")[1]))
+                all_parts_full = [os.path.join(base_path, f) for f in all_parts]
+
+                print(f"Auto-joining {len(all_parts_full)} parts...")
+                output = join_files(all_parts_full, args.output)
+                print("Joined into:", output)
+            else:
+                print("Joining manually listed files...")
+                output = join_files(args.join, args.output)
+                print("Joined into:", output)
     else:
         print("Use --split <file> --size <e.g. 2gb> or --join <part1 part2 ...> --output <file>")
