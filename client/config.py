@@ -1,13 +1,15 @@
+# client/config.py
 
-# Get these from my.telegram.org
-API_ID = 27551777  # Replace with your API ID (it's a number)
-API_HASH = "e95d54fab963d5e374b9c5371a2a9b58" # Replace with your API Hash
+# --- REQUIRED: Get these from my.telegram.org ---
+# 1. Go to https://my.telegram.org and log in.
+# 2. Click on "API development tools".
+# 3. Create a new app (you can call it anything).
+# 4. Copy the api_id and api_hash here.
+API_ID = 27523196  # Replace with your integer API ID
+API_HASH = "cbbcf2d8e08296c1e24bf3ab53b89787" # Replace with your string API Hash
 
+# --- REQUIRED: Channel ID ---
 # The ID of the private Telegram channel where files will be uploaded.
 # It should be the numerical ID (e.g., -1001234567890)
-CHANNEL_ID = -1002446447298  # Replace with your Channel ID
+CHANNEL_ID = -1002772637783 # Replace with your Channel ID
 
-# Path to the file database used by the bot.
-# The client needs to write to this file after a successful upload.
-# The path is relative to the project root directory.
-DB_PATH = "file_db.json"
